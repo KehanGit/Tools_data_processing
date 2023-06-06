@@ -30,26 +30,6 @@ def read_geom(geom):
         bbox = json.load(f)['features'][0]['geometry']
         return bbox
 
-#### Get your API Key and run validity check
-# This gets your API key and prompts you incase your API key is missing or if there are authentication issues
-
-## Get your API Key
-try:
-    PLANET_API_KEY = find_api_key() #remove find_api_key and place your api key like 'api-key'
-except Exception as e:
-    print("Failed to get Planet Key: Try planet init or install Planet Command line tool")
-    sys.exit()
-
-headers = {'Content-Type': 'application/json'}
-
-# check if API key is valid 
-response = requests.get('https://api.planet.com/compute/ops/orders/v2',auth=(PLANET_API_KEY, ""))
-if response.status_code==200:
-    print('Setup OK: API key valid')
-else:
-    print(f'Failed with response code {response.status_code}: reinitialize using planet init')
-
-
 #### Setup Filters for parsing through data
 # This step allows you to pass the geometry filter along with date range and cloud cover filter.
 
@@ -121,6 +101,7 @@ def search_payload(item_type,asset_type,geom,start,end,cloud_cover):
     return search_request
 
 
+
 #### Search function to return ID list
 # This function is the main iterator and looks for all image IDs that matches up with the given search parameters.
 
@@ -159,13 +140,15 @@ def ft_iterate(item_type,asset_type,geom,start,end,cloud_cover,ovp):
             print(e)
     for feature in all_features:
         s = shape(feature['geometry'])
-        epsgcode = feature["properties"]["epsg_code"]
+        # epsgcode = feature["properties"]["epsg_code"] 
+        # the updated version does not have epsgcode, so here I set it as 32610 for default.  - KY 20230605
+        epsgcode = 32610 # for California zone10
         if aoi_shape.area > s.area:
             intersect = (s).intersection(aoi_shape)
         elif s.area >= aoi_shape.area:
             intersect = (aoi_shape).intersection(s)
         proj_transform = pyproj.Transformer.from_proj(
-            pyproj.Proj(4326), pyproj.Proj(epsgcode), always_xy=True
+            pyproj.Proj(4326), pyproj.Proj(epsgcode), always_xy=True # WGS84
         ).transform  # always_xy determines correct coord order
         
         if (
@@ -197,30 +180,32 @@ def ft_iterate(item_type,asset_type,geom,start,end,cloud_cover,ovp):
 
     print(f"Total estimated cost to quota: {round(sum(far),3)} sqkm")
     print(f"Total estimated cost to quota if clipped: {round(sum(ar),3)} sqkm")
+    # print(ar)
 
-    # print("Remove multiple images for one day") # only one date is needed
-    # Because the data quality of different sensor are not the same, here we download all available data
+#     print("Remove multiple images for one day") # only one date is needed
+#     Because the data quality of different sensor are not the same, here we download all available data
 
-    # dateuse = []
-    # iduse = []
-    # datelist = [date[0:8] for date in id_ovp]
-    # d = {"file": id_ovp, "date": datelist}
-    # d = pd.DataFrame(data=d)
+#     dateuse = []
+#     iduse = []
+#     datelist = [date[0:8] for date in id_ovp]
+#     d = {"file": id_ovp, "date": datelist}
+#     d = pd.DataFrame(data=d)
 
-    # for x,y in zip(d["file"], d["date"]):
-    #     if not y in dateuse:
-    #         dateuse.append(y)
-    #         iduse.append(x)
-    #     else:
-    #         continue
+#     for x,y in zip(d["file"], d["date"]):
+#         if not y in dateuse:
+#             dateuse.append(y)
+#             iduse.append(x)
+#         else:
+#             continue
 
-    # id_ovp.sort()
+#     id_ovp.sort()
     print(f'Total unique image IDs: {len(list(set(id_ovp)))}')
     # print(f'Total unique image IDs: {list(set(id_master))}') # all available imgs
     print(f'Total used image IDs: {list(set(id_ovp))}') # imgs with ovp > default ovp
 
     datelist = [d[0:8] for d in id_ovp]
-    return pd.DataFrame(data = {"id": id_ovp, "date": datelist, "instrument": instrument, "estimated area": round(sum(ar),3)})
+    # return pd.DataFrame(data = {"id": id_ovp, "date": datelist, "instrument": instrument, "estimated area": round(sum(ar),3)})
+    return pd.DataFrame(data = {"id": id_ovp, "date": datelist, "instrument": instrument, "estimated area": [round(i,3) for i in ar]})
 
 def order_now(order_payload):
     orders_url = 'https://api.planet.com/compute/ops/orders/v2'
@@ -307,8 +292,8 @@ def order_payload(Name_download, ID_imgs, File_geom):
         "products":[  
             {  
                 "item_ids":ID_imgs,#idlist,
-                "item_type":"PSScene4Band",
-                "product_bundle":"analytic_sr_udm2,analytic_sr"
+                "item_type":"PSScene",#"PSScene4Band",
+                "product_bundle": "analytic_udm2"#""
             }
         ],
         "tools": [
