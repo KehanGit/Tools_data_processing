@@ -21,6 +21,21 @@ from requests.auth import HTTPBasicAuth
 # from tenacity import retry
 from retrying import retry
 
+## Get your API Key
+try:
+    PLANET_API_KEY = find_api_key() #remove find_api_key and place your api key like 'api-key'
+except Exception as e:
+    print("Failed to get Planet Key: Try planet init or install Planet Command line tool")
+    sys.exit()
+
+headers = {'Content-Type': 'application/json'}
+
+# check if API key is valid 
+response = requests.get('https://api.planet.com/compute/ops/orders/v2',auth=(PLANET_API_KEY, ""))
+if response.status_code==200:
+    print('Setup OK: API key valid')
+else:
+    print(f'Failed with response code {response.status_code}: reinitialize using planet init')
 
 
 #### Import your geometries
