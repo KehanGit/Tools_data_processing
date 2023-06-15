@@ -36,7 +36,10 @@ if response.status_code==200:
     print('Setup OK: API key valid')
 else:
     print(f'Failed with response code {response.status_code}: reinitialize using planet init')
+<<<<<<< HEAD
 
+=======
+>>>>>>> 57bb6079f37271032ff73bb8b6d6b71a4620a0ee
 
 
 #### Import your geometries
