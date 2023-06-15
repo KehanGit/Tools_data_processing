@@ -21,18 +21,6 @@ from requests.auth import HTTPBasicAuth
 # from tenacity import retry
 from retrying import retry
 
-
-
-#### Import your geometries
-# In this case a geojson file is obtained for an AOI form geojson.io.
-def read_geom(geom):
-    with open(geom) as f:
-        bbox = json.load(f)['features'][0]['geometry']
-        return bbox
-
-#### Get your API Key and run validity check
-# This gets your API key and prompts you incase your API key is missing or if there are authentication issues
-
 ## Get your API Key
 try:
     PLANET_API_KEY = find_api_key() #remove find_api_key and place your api key like 'api-key'
@@ -49,6 +37,14 @@ if response.status_code==200:
 else:
     print(f'Failed with response code {response.status_code}: reinitialize using planet init')
 
+
+
+#### Import your geometries
+# In this case a geojson file is obtained for an AOI form geojson.io.
+def read_geom(geom):
+    with open(geom) as f:
+        bbox = json.load(f)['features'][0]['geometry']
+        return bbox
 
 #### Setup Filters for parsing through data
 # This step allows you to pass the geometry filter along with date range and cloud cover filter.
@@ -303,6 +299,9 @@ def download_results(order_url,folder, overwrite=False):
 
 # Get area to use for clipping and create an order payload
 def order_payload(Name_download, ID_imgs, File_geom): 
+    with open(File_geom) as f:
+        geometry = json.load(f)['features'][0]['geometry']
+        
     payload = {
          "name":Name_download, # change order name to whatever you would like (name is not unique)
          "order_type":"partial", # the partial option here allows for an order to complete even if few items fail
@@ -313,13 +312,13 @@ def order_payload(Name_download, ID_imgs, File_geom):
             {  
                 "item_ids":ID_imgs,#idlist,
                 "item_type":"PSScene",#"PSScene4Band",
-                "product_bundle": "analytic_udm2"#"analytic_sr_udm2,analytic_sr"
+                "product_bundle": "analytic_udm2"#""
             }
         ],
         "tools": [
         {
             "clip": {
-                "aoi": read_geom(File_geom)
+                "aoi":geometry
             }
         }
         ]

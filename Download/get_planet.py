@@ -21,6 +21,22 @@ from requests.auth import HTTPBasicAuth
 # from tenacity import retry
 from retrying import retry
 
+## Get your API Key
+try:
+    PLANET_API_KEY = find_api_key() #remove find_api_key and place your api key like 'api-key'
+except Exception as e:
+    print("Failed to get Planet Key: Try planet init or install Planet Command line tool")
+    sys.exit()
+
+headers = {'Content-Type': 'application/json'}
+
+# check if API key is valid 
+response = requests.get('https://api.planet.com/compute/ops/orders/v2',auth=(PLANET_API_KEY, ""))
+if response.status_code==200:
+    print('Setup OK: API key valid')
+else:
+    print(f'Failed with response code {response.status_code}: reinitialize using planet init')
+
 
 
 #### Import your geometries
@@ -283,6 +299,9 @@ def download_results(order_url,folder, overwrite=False):
 
 # Get area to use for clipping and create an order payload
 def order_payload(Name_download, ID_imgs, File_geom): 
+    with open(File_geom) as f:
+        geometry = json.load(f)['features'][0]['geometry']
+        
     payload = {
          "name":Name_download, # change order name to whatever you would like (name is not unique)
          "order_type":"partial", # the partial option here allows for an order to complete even if few items fail
@@ -299,7 +318,7 @@ def order_payload(Name_download, ID_imgs, File_geom):
         "tools": [
         {
             "clip": {
-                "aoi": read_geom(File_geom)
+                "aoi":geometry
             }
         }
         ]
